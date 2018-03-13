@@ -8,6 +8,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -24,9 +25,10 @@ import java.util.Iterator;
 public class MainActivity extends AppCompatActivity {
 
     private Button loginButton;
-    private TextView webUrl;
+    private EditText webUrl;
     private EditText userName;
     private EditText password;
+    private TextView jsonString;
     private TextView messageText;
 
     @Override
@@ -43,12 +45,16 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        webUrl = (TextView) findViewById(R.id.webSiteText);
-        webUrl.setText("http://192.168.0.103:5050/Authenticate/LoginFromAndroid");
+        webUrl = (EditText) findViewById(R.id.webSiteText);
+        // webUrl.setText("http://192.168.0.103:5050/Authenticate/LoginFromAndroid");   // ASP.NET Core
+        webUrl.setText("http://ec2-13-59-195-3.us-east-2.compute.amazonaws.com:8080/MVCofJDBCsmsong/LoginForRESTfulServlet");
+        // webUrl.setText("http://192.168.0.102:8080/MVCofJDBCsmsong/LoginForRESTfulServlet");
         userName = (EditText) findViewById(R.id.userNameText);
         userName.setText("chaolee");
         password = (EditText) findViewById(R.id.passwordText);
         password.setText("86637971");
+
+        jsonString = (TextView) findViewById(R.id.jsonString);
         messageText = (TextView) findViewById(R.id.messageText);
     }
 
@@ -62,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected String[] doInBackground(Void... voids) {
 
-            String[] result = {""};
+            String[] result = {"",""};
 
             String webSite = webUrl.getText().toString();
             System.out.println("webUrl = " + webSite);
@@ -76,8 +82,8 @@ public class MainActivity extends AppCompatActivity {
             try {
 
                 JSONObject jsonObject = new JSONObject();
-                jsonObject.put("username", user);       // GitHub's user name field
-                jsonObject.put("password", pass);   // GitHub's password field
+                jsonObject.put("username", user);       // Web's user name field
+                jsonObject.put("password", pass);       // Web's password field
 
                 String params = getQueryStringFromJSON(jsonObject);
 
@@ -113,18 +119,25 @@ public class MainActivity extends AppCompatActivity {
                     while((readBuff=inputStreamReader.read()) != -1) {
                         sb.append((char)readBuff);
                     }
-                    result[0] = sb.toString();
+                    result[0] = "Succeeded";
+                    result[1] = sb.toString();
 
                     System.out.println("Web output -> " + result[0]);
 
                     inputStreamReader.close();
                     inputStream.close();
+
                 } else {
                     System.out.println("REST Web Service -> Failed to connect.");
+                    // result[0] = "REST Web Service -> Failed to connect.";
+                    result[0] = "Failed";
                 }
 
             } catch (Exception ex) {
                 ex.printStackTrace();
+                System.out.println("REST Web Service -> Exception occurred.");
+                // result[0] = "REST Web Service -> Exception occurred.";
+                result[0] = "Exception";
             }
 
             return result;
@@ -139,14 +152,39 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(String[] strings) {
             super.onPostExecute(strings);
+            String result = "";
+            String status = strings[0].toUpperCase();
+            if (status.equals("SUCCEEDED")) {
+                // Succeeded
+                result = "";
+                try {
+                    JSONObject jObject = new JSONObject(strings[1]);
 
-            if (strings[0].isEmpty()) {
-                // Failed to connect
-                messageText.setText("Failed to connect.");
+                    result = "Connected to JDBC: ";
+                    if (jObject.getBoolean("isConnectedToJDBC")) {
+                        result += "Yes";
+                    } else {
+                        result += "No";
+                    }
+                    result += "\n" + "User Name: " + jObject.getString("userName");
+                    result += "\n" + "User Email: " + jObject.getString("userEmail");
+                    result += "\n" + "User State: " + jObject.getString("userState");
+                } catch(JSONException ex) {
+
+                    ex.printStackTrace();
+                    result = "Failed to parse JSONObject from the result.";
+                }
+
+            } else if (status.equals("FAILED")) {
+                // Failed
+                result = "REST Web Service -> Failed to connect.";
             } else {
-                String result = strings[0];
-                messageText.setText(result);
+                // Exception
+                result = "REST Web Service -> Exception occurred.";
             }
+
+            jsonString.setText(strings[1]);
+            messageText.setText(result);
         }
 
         private String getQueryStringFromJSON(JSONObject jsonObject) {
