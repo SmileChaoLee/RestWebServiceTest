@@ -3,6 +3,7 @@ package com.smile.restwebservicetest;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -36,15 +37,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        loginButton = (Button)findViewById(R.id.loginButton);
-        loginButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // start login process
-                new LoginAsyncTask().execute();
-            }
-        });
-
         webUrl = (EditText) findViewById(R.id.webSiteText);
         // webUrl.setText("http://192.168.0.103:5050/Authenticate/LoginFromAndroid");   // ASP.NET Core
         webUrl.setText("http://ec2-13-59-195-3.us-east-2.compute.amazonaws.com:8080/MVCofJDBCsmsong/LoginForRESTfulServlet");
@@ -56,10 +48,20 @@ public class MainActivity extends AppCompatActivity {
 
         jsonString = (TextView) findViewById(R.id.jsonString);
         messageText = (TextView) findViewById(R.id.messageText);
+
+        loginButton = (Button)findViewById(R.id.loginButton);
+        loginButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // start login process
+                new LoginAsyncTask().execute();
+            }
+        });
     }
 
     private class LoginAsyncTask extends AsyncTask<Void, Void, String[]> {
 
+        private String TAG = "LoginAsyncTask";
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
@@ -71,13 +73,13 @@ public class MainActivity extends AppCompatActivity {
             String[] result = {"",""};
 
             String webSite = webUrl.getText().toString();
-            System.out.println("webUrl = " + webSite);
+            Log.i(TAG,"webUrl = " + webSite);
 
             String user = userName.getText().toString();
-            System.out.println("userName = " + user);
+            Log.i(TAG,"userName = " + user);
 
             String pass = password.getText().toString();
-            System.out.println("password = " + pass);
+            Log.i(TAG,"password = " + pass);
 
             try {
 
@@ -96,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
                 myConnection.setDoInput(true);
                 myConnection.setDoOutput(true);  // for write data to web
 
-                System.out.println("Getting OutputStream ....");
+                Log.i(TAG, "Getting OutputStream ....");
 
                 OutputStream outputStream = myConnection.getOutputStream();
                 OutputStreamWriter outputStreamWriter = new OutputStreamWriter(outputStream);
@@ -105,12 +107,12 @@ public class MainActivity extends AppCompatActivity {
                 outputStreamWriter.close();
                 outputStream.close();
 
-                System.out.println("OutputStream closing ....");
+                Log.i(TAG, "OutputStream closing ....");
 
                 int responseCode = myConnection.getResponseCode();
                 if (responseCode == HttpURLConnection.HTTP_OK) {
                     // succeeded to request
-                    System.out.println("REST Web Service -> Succeeded to connect.");
+                    Log.i(TAG, "REST Web Service -> Succeeded to connect.");
                     InputStream inputStream = myConnection.getInputStream();
                     InputStreamReader inputStreamReader = new InputStreamReader(inputStream,"UTF-8");
 
@@ -122,21 +124,20 @@ public class MainActivity extends AppCompatActivity {
                     result[0] = "Succeeded";
                     result[1] = sb.toString();
 
-                    System.out.println("Web output -> " + result[0]);
+                    Log.i(TAG, "Web status -> " + result[0]);
+                    Log.i(TAG, "Web output -> " + result[1]);
 
                     inputStreamReader.close();
                     inputStream.close();
 
                 } else {
-                    System.out.println("REST Web Service -> Failed to connect.");
-                    // result[0] = "REST Web Service -> Failed to connect.";
+                    Log.i(TAG, "REST Web Service -> Failed to connect.");
                     result[0] = "Failed";
                 }
 
             } catch (Exception ex) {
-                ex.printStackTrace();
-                System.out.println("REST Web Service -> Exception occurred.");
-                // result[0] = "REST Web Service -> Exception occurred.";
+                String errorMsg = ex.toString() + "\n" + ex.getStackTrace();
+                Log.d(TAG, "REST Web Service -> Exception occurred." + "\n" + errorMsg);
                 result[0] = "Exception";
             }
 
@@ -170,8 +171,8 @@ public class MainActivity extends AppCompatActivity {
                     result += "\n" + "User Email: " + jObject.getString("userEmail");
                     result += "\n" + "User State: " + jObject.getString("userState");
                 } catch(JSONException ex) {
-
-                    ex.printStackTrace();
+                    String errorMsg = ex.toString() + "\n" + ex.getStackTrace();
+                    Log.d(TAG, "Failed to parse JSONObject from the result." + "\n" + errorMsg);
                     result = "Failed to parse JSONObject from the result.";
                 }
 
@@ -214,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             String res = result.toString();
-            System.out.println("StringBuilder result = " + res);
+            Log.i(TAG, "StringBuilder result = " + res);
 
             return res;
         }
